@@ -9,6 +9,11 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SASL_ENABLED: "true"
+      ZOOKEEPER_KERBEROS_REMOVE_HOST_FROM_PRINCIPAL: "true"
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/zookeeper/zookeeper_jaas.conf"
+    volumes:
+      - ./zookeeper_jaas.conf:/etc/zookeeper/zookeeper_jaas.conf
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
@@ -31,10 +36,9 @@ services:
       KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_SECURITY_INTER_BROKER_PROTOCOL: SASL_PLAINTEXT
-      KAFKA_OPTS: -Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
     volumes:
       - ./kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
-    command: "sh -c 'exec kafka-server-start /etc/kafka/server.properties'"
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.3.0
@@ -49,23 +53,11 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'SASL_PLAINTEXT://kafka:9092'
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-
-  control-center:
-    image: confluentinc/cp-enterprise-control-center:7.3.0
-    hostname: control-center
-    container_name: control-center
-    depends_on:
-      - kafka
-      - schema-registry
-    ports:
-      - "9021:9021"
-    environment:
-      CONTROL_CENTER_BOOTSTRAP_SERVERS: 'SASL_PLAINTEXT://kafka:9092'
-      CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
-      CONTROL_CENTER_REPLICATION_FACTOR: 1
-      CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
-      CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
-      CONFLUENT_METRICS_TOPIC_REPLICATION: 1
-      CONTROL_CENTER_SECURITY_PROTOCOL: SASL_PLAINTEXT
-      CONTROL_CENTER_SASL_MECHANISM: PLAIN
-      CONTROL_CENTER_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="admin-secret";
+      SCHEMA_REGISTRY_SASL_MECHANISM: PLAIN
+      SCHEMA_REGISTRY_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_MECHANISM: PLAIN
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      SCHEMA_REGISTRY_KAFKASTORE_SASL_JAAS_CONFIG: org.apache.kafka.common.security.plain.PlainLoginModule required username="schema-registry-user" password="schema-registry-password";
+      SCHEMA_REGISTRY_OPTS: "-Djava.security.auth.login.config=/etc/schema-registry/schema_registry_jaas.conf"
+    volumes:
+      - ./schema_registry_jaas.conf:/etc/schema-registry/schema_registry_jaas.conf
